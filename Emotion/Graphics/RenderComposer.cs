@@ -21,22 +21,10 @@ namespace Emotion.Graphics
 {
     public sealed partial class RenderComposer
     {
-        private const int RENDER_COMMAND_INITIAL_SIZE = 16;
-
         /// <summary>
         /// The quad batch currently active.
         /// </summary>
         public VertexDataBatch ActiveQuadBatch;
-
-        /// <summary>
-        /// Whether the composer has processed all of its commands.
-        /// </summary>
-        public bool Processed;
-
-        /// <summary>
-        /// Current list of pushed render commands.
-        /// </summary>
-        internal List<RenderCommand> RenderCommands = new List<RenderCommand>(RENDER_COMMAND_INITIAL_SIZE);
 
         /// <summary>
         /// Handles recycling of different recyclable command types.
@@ -99,27 +87,6 @@ namespace Emotion.Graphics
         /// </summary>
         public void Process()
         {
-            return;
-
-            Debug.Assert(GLThread.IsGLThread());
-
-            // Create graphics objects if needed.
-            if (_createGl && VertexBuffer == null)
-            {
-                VertexBuffer = new VertexBuffer((uint) (Engine.Renderer.MaxIndices * VertexData.SizeInBytes));
-                CommonVao = new VertexArrayObject<VertexData>(VertexBuffer);
-                VaoCache.Add(typeof(VertexData), CommonVao);
-            }
-
-            if (Processed) return;
-
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var c = 0; c < RenderCommands.Count; c++)
-            {
-                RenderCommands[c].Process(this);
-            }
-
-            Processed = true;
         }
 
         /// <summary>
@@ -134,16 +101,6 @@ namespace Emotion.Graphics
             }
 
             InvalidateStateBatches();
-            return;
-
-            Debug.Assert(GLThread.IsGLThread());
-            Debug.Assert(Processed);
-
-            // ReSharper disable once ForCanBeConvertedToForeach
-            for (var c = 0; c < RenderCommands.Count; c++)
-            {
-                RenderCommands[c].Execute(this);
-            }
         }
 
         /// <summary>
@@ -161,9 +118,6 @@ namespace Emotion.Graphics
 
             // Reset batch state.
             RestoreSpriteBatchType();
-
-            // Clear old commands.
-            RenderCommands.Clear();
 
             // Reset the memory pool.
             MemoryPool.Reset();
@@ -269,10 +223,6 @@ namespace Emotion.Graphics
         public void PushCommand(RenderCommand command, bool _ = false)
         {
             if (command == null) return;
-
-            Processed = false;
-
-            RenderCommands.Add(command);
 
             // Command post processing.
             switch (command)
