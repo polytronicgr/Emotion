@@ -99,6 +99,8 @@ namespace Emotion.Graphics
         /// </summary>
         public void Process()
         {
+            return;
+
             Debug.Assert(GLThread.IsGLThread());
 
             // Create graphics objects if needed.
@@ -125,6 +127,15 @@ namespace Emotion.Graphics
         /// </summary>
         public void Execute()
         {
+            if(ActiveQuadBatch != null)
+            {
+                ActiveQuadBatch.Process(this);
+                ActiveQuadBatch.Execute(this);
+            }
+
+            InvalidateStateBatches();
+            return;
+
             Debug.Assert(GLThread.IsGLThread());
             Debug.Assert(Processed);
 
@@ -140,6 +151,14 @@ namespace Emotion.Graphics
         /// </summary>
         public void Reset()
         {
+            // Create graphics objects if needed.
+            if (_createGl && VertexBuffer == null)
+            {
+                VertexBuffer = new VertexBuffer((uint) (Engine.Renderer.MaxIndices * VertexData.SizeInBytes));
+                CommonVao = new VertexArrayObject<VertexData>(VertexBuffer);
+                VaoCache.Add(typeof(VertexData), CommonVao);
+            }
+
             // Reset batch state.
             RestoreSpriteBatchType();
 
@@ -213,6 +232,11 @@ namespace Emotion.Graphics
         /// </summary>
         public void InvalidateStateBatches()
         {
+            if(ActiveQuadBatch != null)
+            {
+                ActiveQuadBatch.Process(this);
+                ActiveQuadBatch.Execute(this);
+            }
             ActiveQuadBatch = null;
         }
 
@@ -266,6 +290,12 @@ namespace Emotion.Graphics
                 case SpriteBatchBase _:
                     InvalidateStateBatches();
                     break;
+            }
+
+            if (!(command is SpriteBatchBase))
+            {
+                command.Process(this);
+                command.Execute(this);
             }
         }
 
